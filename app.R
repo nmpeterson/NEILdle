@@ -11,11 +11,12 @@ THE_NAME <- "NEILdle"
 THE_URL <- "https://nmpeterson.shinyapps.io/NEILdle"
 
 # Still TO-DO:
-# - add x & y to all_geos table, instead of dynamically using st_centroid() in dir_to_target()
 # - alert when trying to submit invalid name (including St Charles)
 # - if solved, don't share number of letters in the guess/solution emoji
 # - after winning or 6th guess, change map to show CMAP counties + muni name as title?
-# - use a seed based on date for a unique dail`y puzzle (just uncomment)
+# - also add a link to the muni's CDS?
+# - add screenshot to README.md
+# - use a seed based on date for a unique daily puzzle (just uncomment)
 
 ui <- fluidPage(
   theme = bslib::bs_theme(version = 4, bootswatch = "litera"),
