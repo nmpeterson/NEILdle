@@ -12,14 +12,12 @@ load("data/geo_distances.rda")
 
 ## Set global vars
 THE_NAME <- "NEILdle"
-THE_URL <- "https://nmpeterson.shinyapps.io/NEILdle"
+THE_URL <- "https://bit.ly/NEILdle"
 
 # Still TO-DO:
-# - alert when trying to submit invalid name -- currently crashing
 # - if solved, don't share number of letters in the guess/solution emoji
-# - after winning or 6th guess, change map to show CMAP counties + muni name as title?
-# - also add a link to the muni's CDS?
-# - add screenshot to README.md
+# - add date to endgame-content
+# - clean up layout, fonts, etc.
 # - use a seed based on date for a unique daily puzzle (just uncomment)
 
 ui <- fluidPage(
@@ -45,13 +43,13 @@ ui <- fluidPage(
     }
     .guesses .word > .letter {
         display: inline-block;
-        width: 40px;
-        height: 40px;
+        width: 30px;
+        height: 30px;
         text-align: center;
         vertical-align: middle;
         border-radius: 3px;
-        line-height: 40px;
-        font-size: 28px;
+        line-height: 30px;
+        font-size: 20px;
         font-weight: bold;
         vertical-align: middle;
         user-select: none;
@@ -72,14 +70,22 @@ ui <- fluidPage(
         background-color: white;
         border: 1px solid black;
     }
-    .keyboard {
+    #invalid-guess,
+    .loser {
+        color: #ca3428;
+        font-weight: bold;
+    }
+    #cds_link {
+        font-weight: bold;
+    }
+    #keyboard .keyboard {
         height: 240px;
         user-select: none;
     }
-    .keyboard .keyboard-row {
+    #keyboard .keyboard .keyboard-row {
         margin: 3px;
     }
-    .keyboard .keyboard-row .key {
+    #keyboard .keyboard .keyboard-row .key {
         display: inline-block;
         padding: 0;
         width: 30px;
@@ -96,22 +102,22 @@ ui <- fluidPage(
         background-color: #e2e7ea;
         touch-action: none;
     }
-    .keyboard .keyboard-row .key:focus {
+    #keyboard .keyboard .keyboard-row .key:focus {
         outline: none;
     }
-    .keyboard .keyboard-row .key.wide-key {
+    #keyboard .keyboard .keyboard-row .key.wide-key {
         font-size: 15px;
         width: 100px;
     }
-    .keyboard .keyboard-row .key.correct {
+    #keyboard .keyboard .keyboard-row .key.correct {
         background-color: #6dae4f;
         color: white;
     }
-    .keyboard .keyboard-row .key.in-word {
+    #keyboard .keyboard .keyboard-row .key.in-word {
         background-color: #d3b42b;
         color: white;
     }
-    .keyboard .keyboard-row .key.not-in-word {
+    #keyboard .keyboard .keyboard-row .key.not-in-word {
         background-color: #2d4147;
         color: white;
     }
@@ -120,6 +126,7 @@ ui <- fluidPage(
         display: inline-block;
         line-height: 1.4;
         letter-spacing: .2em;
+        text-align: left;
         margin: 20px 8px;
         width: fit-content;
         padding: 20px;
@@ -127,19 +134,36 @@ ui <- fluidPage(
         box-shadow: 4px 4px 19px rgb(0 0 0 / 17%);
     }
   ")),
-  div(class = "title-and-map",
-    h1(THE_NAME),
-    plotOutput("the_map")
+  fluidRow(
+    div(class = "title-and-map col-md",
+      h1(THE_NAME),
+      plotOutput("geo_map")
+    )
   ),
-  div(class = "guesses",
-    uiOutput("previous_guesses"),
-    uiOutput("current_guess"),
-    uiOutput("endgame")
+  fluidRow(
+    div(class = "guesses col-md",
+      uiOutput("previous_guesses"),
+      uiOutput("current_guess")
+    )
   ),
-  # div(class = "new-game",
-  #   uiOutput("new_game_ui")
+  fluidRow(
+    div(class = "endgame col-md",
+      uiOutput("loser_message"),
+      uiOutput("cds_link"),
+      #plotOutput("final_map"),
+      uiOutput("endgame")
+    ),
+  ),
+  # fluidRow(
+  #   div(class = "new-game col-md",
+  #     uiOutput("new_game_ui")
+  #   )
   # ),
-  uiOutput("keyboard"),
+  fluidRow(
+    div(class = "col-md",
+      uiOutput("keyboard")
+    )
+  ),
   tags$script(HTML("
     const letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M',
                      'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'];
@@ -200,32 +224,51 @@ server <- function(input, output) {
   finished <- reactiveVal(FALSE)
   win_moves <- reactiveVal(0)
   current_guess_letters <- reactiveVal(character(0))
+  invalid_geo_message <- reactiveVal("")
+  loser <- reactiveVal(FALSE)
 
-  output$the_map <- renderPlot({
+  output$geo_map <- renderPlot({
     message(toupper(target_geo()))
     map_df <- filter(all_geos, geo_name_std == target_geo())
-    if (!finished()) {
-      p <- ggplot(map_df) +
-        geom_sf(fill = "#008fd5", col = NA) +
-        theme_void()
-    } else {
-      p <- ggplot(map_df) +
-        geom_sf(fill = "#008fd5", col = "#008fd5", lwd = 1) +
-        geom_sf(data = filter(county_sf, cmap), fill = NA, col = "#2d4147", lwd = 1) +
-        labs(title = toupper(target_geo())) +
-        theme_void()
-    }
+
+    # Inital map: muni boundaries only
+    p <- ggplot(map_df) +
+      geom_sf(fill = "#008fd5", col = NA) +
+      theme_void()
+
     print(p)
   })
+
+  # output$final_map <- renderPlot({
+  #   if (!finished()) return()
+  #   map_df <- filter(all_geos, geo_name_std == target_geo())
+  #
+  #   # Final map: add county boundaries for context
+  #   p <- ggplot(map_df) +
+  #     geom_sf(fill = "#008fd5", col = "#008fd5", lwd = 1) +
+  #     geom_sf(data = filter(county_sf, cmap), fill = NA, col = "#2d4147", lwd = 1) +
+  #     labs(title = toupper(target_geo())) +
+  #     theme_void() +
+  #     theme(plot.title = element_text(face = "bold", size = 20, hjust = 0.5, color = "#008fd5"))
+  #
+  #   print(p)
+  # })
 
 
   observeEvent(input$Enter, {
     guess <- tolower(paste(current_guess_letters(), collapse = ""))
     message(guess)
-    message(dist_to_target(guess))
-    message(dir_to_target(guess))
 
-    if (! guess %in% all_geos$geo_name_std) return()  # TODO: Need to handle invalid guesses here
+    if (! guess %in% all_geos$geo_name_std) {
+      invalid_geo_message(paste0('"', toupper(guess), '" is not a municipality in Northeastern Illinois'))
+      #current_guess_letters(character(0))  # Clears invalid guess. If not used, user has to backspace and correct.
+      return()  # Don't process the guess any further
+    } else {
+      invalid_geo_message("")
+    }
+
+    #message(dist_to_target(guess))
+    #message(dir_to_target(guess))
 
     all_guesses_new <- all_guesses()
 
@@ -236,9 +279,11 @@ server <- function(input, output) {
 
     if (isTRUE(check_result$win)) {
       finished(TRUE)
-      win_moves(length(all_guesses))
+      win_moves(length(all_guesses()))
+      message(paste("Won in", win_moves()))
     } else if (length(all_guesses()) == 6) {
       finished(TRUE)
+      loser(TRUE)  # :(
     }
 
     current_guess_letters(character(0))
@@ -274,12 +319,11 @@ server <- function(input, output) {
 
     letters <- current_guess_letters()
 
-    div(
-      class = "word",
-      lapply(letters, function(letter) {
-        div(toupper(letter), class ="letter guess")
-      })
-    )
+    div(class = "word",
+        lapply(letters, function(letter) {
+          div(toupper(letter), class="letter guess")
+        }),
+        div(invalid_geo_message(), id="invalid-guess"))
   })
 
   # output$new_game_ui <- renderUI({
@@ -347,7 +391,11 @@ server <- function(input, output) {
       div(class = "keyboard-row", row_keys)
     })
 
-    div(class = "keyboard", keyboard)
+    if (!finished()) {
+      div(class = "keyboard", keyboard)
+    } else {
+      return()  # Hide keyboard once game is done
+    }
   })
 
   # Add listeners for each key, except Enter and Back
@@ -368,6 +416,32 @@ server <- function(input, output) {
   observeEvent(input$Back, {
     if (length(current_guess_letters()) > 0) {
       current_guess_letters(current_guess_letters()[-length(current_guess_letters())])
+    }
+  })
+
+
+  output$loser_message <- renderUI({
+    if (!loser()) {
+      return()
+    } else {
+      div(class = "loser", paste0('The correct answer was "', toupper(target_geo()), '"'))
+    }
+  })
+
+
+  output$cds_link <- renderUI({
+    if (!finished()) {
+      return()
+    } else {
+      cds_url = paste0("https://www.cmap.illinois.gov/documents/10180/102881/",
+                       str_replace_all(target_geo(), " ", "+"),
+                       ".pdf")
+      if (target_geo() == "st charles") {
+        cds_url <- str_replace(cds_url, "st+charles", "st.+charles")
+      }
+      div(id = "cds-link",
+        "View the ", a("Community Data Snapshot", href=cds_url)
+      )
     }
   })
 
@@ -404,7 +478,7 @@ server <- function(input, output) {
     guess_str <- tolower(guess_str)
     guess <- strsplit(guess_str, "")[[1]]
     target <- strsplit(target_str, "")[[1]]
-    remaining <- character(0)
+    remaining <- target
 
     result <- rep("not-in-word", length(guess))
 
@@ -414,10 +488,10 @@ server <- function(input, output) {
       if (i <= length(target)) {
         if (guess[i] == target[i]) {
           result[i] <- "correct"
-        } else {
-          remaining <- c(remaining, target[i])
+          remaining <- remaining[-match(guess[i], remaining)]
         }
       }
+      #message(1, " ", guess[i], " ", remaining, " ", result)
     }
 
     for (i in seq_along(guess)) {
@@ -425,13 +499,14 @@ server <- function(input, output) {
         result[i] <- "in-word"
         remaining <- remaining[-match(guess[i], remaining)]
       }
+      #message(2, " ", guess[i], " ", remaining, " ", result)
     }
 
     list(
       word = guess_str,
       letters = guess,
       matches = result,
-      win = all(result == "correct"),
+      win = guess_str == target_str,
       distance_away = dist_to_target(guess_str),
       bearing = dir_to_target(guess_str)
     )
@@ -439,9 +514,6 @@ server <- function(input, output) {
 
   dist_to_target <- function(guess) {
     if (is.null(guess)) return()
-    #guess_sf <- filter(all_geos, geo_name_std == guess)
-    #target_sf <- filter(all_geos, geo_name_std == target_geo())
-    #paste0(round(sf::st_distance(guess_sf, target_sf) / 5280, 1), " mi.")
     distance_ft <- geo_distances[all_geos$geo_name_std == guess,
                                  all_geos$geo_name_std == target_geo()]
     return(paste0(round(distance_ft / 5280, 1), " mi."))
@@ -451,12 +523,11 @@ server <- function(input, output) {
     if (is.null(guess)) return()
     guess_xy <- filter(all_geos, geo_name_std == guess)$centroid[[1]]
     target_xy <- filter(all_geos, geo_name_std == target_geo())$centroid[[1]]
-    message(guess_xy)
-    message(target_xy)
     if (guess_xy == target_xy) return("🎯")
     angle <- atan2(target_xy[2] - guess_xy[2], target_xy[1] - guess_xy[1]) * 180 / pi
     index <- round(floor(((angle + 22.5) %% 360) / 45)) + 1
     cardinal_dirs <- c("➡", "↗", "⬆", "↖", "⬅", "↙", "⬇", "↘")  # Order here is critical
+    # cardinal_dirs <- c("E", "NE", "N", "NW", "W", "SW", "S", "SE")  # Order here is critical
     bearing <- cardinal_dirs[index]
     return(bearing)
   }
