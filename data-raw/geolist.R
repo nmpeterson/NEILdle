@@ -36,7 +36,7 @@ all_geos <- munis %>%
 
 
 ## Pre-calculate distances between all geographies
-geo_distances <- st_distance(all_geos, all_geos)
+geo_distances <- st_distance(all_geos$centroid, all_geos$centroid)
 
 
 ## Save datasets for importing in app.R
