@@ -31,7 +31,7 @@ ui <- fluidPage(
         grid-template-rows: 1fr auto;
     }
     .guesses {
-        text-align: left;
+        text-align: center;
         overflow-y: auto;
         height: 100%;
     }
@@ -272,7 +272,8 @@ server <- function(input, output) {
 
     all_guesses_new <- all_guesses()
 
-    check_result <- check_word(guess, target_geo())
+    max_distance <- as.numeric(max(geo_distances[all_geos$geo_name_std == target_geo(), ]))
+    check_result <- check_word(guess, target_geo(), max_distance)
     all_guesses_new[[length(all_guesses_new) + 1]] <- check_result
     all_guesses(all_guesses_new)
     message(length(all_guesses()))
@@ -450,16 +451,19 @@ server <- function(input, output) {
     if (!finished())
       return()
 
-    lines <- lapply(all_guesses(), function(guess) {
-      line <- vapply(guess$matches, function(match) {
-        switch(match,
-               "correct" = "🟩",
-               "in-word" = "🟨",
-               "not-in-word" = "⬜"
-        )
-      }, character(1))
+    message(all_guesses())
 
-      div(paste(line, collapse = ""))
+    lines <- lapply(all_guesses(), function(guess) {
+      # line <- vapply(guess$matches, function(match) {
+      #   switch(match,
+      #          "correct" = "🟩",
+      #          "in-word" = "🟨",
+      #          "not-in-word" = "⬜"
+      #   )
+      # }, character(1))
+      #
+      # div(paste(line, collapse = ""))
+      div(guess$score_social)
     })
     message(lines)
 
@@ -474,7 +478,7 @@ server <- function(input, output) {
     )
   })
 
-  check_word <- function(guess_str, target_str) {
+  check_word <- function(guess_str, target_str, max_dist) {
     guess_str <- tolower(guess_str)
     guess <- strsplit(guess_str, "")[[1]]
     target <- strsplit(target_str, "")[[1]]
@@ -502,13 +506,17 @@ server <- function(input, output) {
       #message(2, " ", guess[i], " ", remaining, " ", result)
     }
 
+    guess_dist <- dist_to_target(guess_str)
+    guess_score <- floor((max_dist - guess_dist) / max_dist * 5)
+
     list(
       word = guess_str,
       letters = guess,
       matches = result,
       win = guess_str == target_str,
-      distance_away = dist_to_target(guess_str),
-      bearing = dir_to_target(guess_str)
+      distance_away = paste0(round(guess_dist / 5280, 1), " mi."),
+      bearing = dir_to_target(guess_str),
+      score_social = paste(c(rep("🟦", guess_score), rep("⬜", 5-guess_score)), collapse = "")
     )
   }
 
@@ -516,7 +524,7 @@ server <- function(input, output) {
     if (is.null(guess)) return()
     distance_ft <- geo_distances[all_geos$geo_name_std == guess,
                                  all_geos$geo_name_std == target_geo()]
-    return(paste0(round(distance_ft / 5280, 1), " mi."))
+    return(as.numeric(distance_ft))
   }
 
   dir_to_target <- function(guess) {
