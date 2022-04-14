@@ -17,7 +17,6 @@ THE_URL <- "https://bit.ly/NEILdle"
 # Still TO-DO:
 # - add date or ID to endgame-content
 # - clean up layout, fonts, etc.
-# - use a seed based on date for a unique daily puzzle (just uncomment)
 
 ui <- fluidPage(
   theme = bslib::bs_theme(version = 4, bootswatch = "litera"),
@@ -216,7 +215,7 @@ server <- function(input, output) {
 
   # Set the random seed based on the date, so that the same word is used during
   # each day.
-  #set.seed(as.integer(Sys.Date()))
+  set.seed(as.integer(Sys.Date()))
 
   target_geo <- reactiveVal(sample(all_geos$geo_name_std, 1))
   all_guesses <- reactiveVal(list())
