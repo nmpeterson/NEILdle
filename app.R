@@ -12,7 +12,7 @@ load("data/geo_distances.rda")
 
 ## Set global vars
 THE_NAME <- "NEILdle"
-THE_URL <- "https://bit.ly/NEILdle"
+THE_URL <- "https://bit.ly/neildle"
 
 # Still TO-DO:
 # - add date or ID to endgame-content
