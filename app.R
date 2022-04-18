@@ -16,7 +16,7 @@ THE_URL <- "https://bit.ly/neildle"
 
 # Still TO-DO:
 # - add date or ID to endgame-content
-# - clean up layout, fonts, etc.
+# - add info button
 
 ui <- fluidPage(
   theme = bslib::bs_theme(version = 4, bootswatch = "litera"),
@@ -25,13 +25,18 @@ ui <- fluidPage(
     .container-fluid {
         text-align: center;
         height: calc(100vh - 30px);
-        display: grid;
-        grid-template-rows: 1fr auto;
+        /*display: grid;
+        grid-template-rows: 1fr auto;*/
     }
     .guesses {
         text-align: center;
         overflow-y: auto;
         height: 100%;
+    }
+    #all_guesses {
+        display: inline-block;
+        text-align: left;
+        width: fit-content;
     }
     .guesses.finished {
         overflow-y: visible;
@@ -68,6 +73,12 @@ ui <- fluidPage(
         background-color: white;
         border: 1px solid black;
     }
+    span.distance {
+        font-weight: bold;
+    }
+    span.emoji {
+        font-family: 'apple color emoji', 'segoe ui emoji', 'noto color emoji', 'android emoji', emojisymbols, 'emojione mozilla', 'twemoji mozilla', 'segoe ui symbol';
+    }
     #invalid-guess,
     .loser {
         color: #ca3428;
@@ -86,7 +97,7 @@ ui <- fluidPage(
     #keyboard .keyboard .keyboard-row .key {
         display: inline-block;
         padding: 0;
-        width: 30px;
+        width: 29px;
         height: 50px;
         text-align: center;
         vertical-align: middle;
@@ -140,8 +151,10 @@ ui <- fluidPage(
   ),
   fluidRow(
     div(class = "guesses col-md",
-      uiOutput("previous_guesses"),
-      uiOutput("current_guess")
+      div(id = "all_guesses",
+        uiOutput("previous_guesses"),
+        uiOutput("current_guess")
+      )
     )
   ),
   fluidRow(
@@ -303,7 +316,11 @@ server <- function(input, output) {
         SIMPLIFY = FALSE,
         USE.NAMES = FALSE
       )
-      div(class = "word", row, guess$distance_away, guess$bearing)
+      div(class = "word",
+        row,
+        span(class = "distance", guess$distance_away),
+        span(class = "emoji", guess$bearing)
+      )
     })
 
     scroll_js <- "
