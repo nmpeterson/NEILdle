@@ -140,6 +140,10 @@ ui <- fluidPage(
   fluidRow(
     div(class = "title-and-map col-md",
       h1(THE_NAME),
+      p(class = "lead",
+        "Which of the",
+        a("284 municipalities", href="https://www.cmap.illinois.gov/data/community-snapshots#Municipal_data_2017", target="_blank"),
+        "in northeastern Illinois (NEIL) is this?"),
       plotOutput("geo_map")
     )
   ),
