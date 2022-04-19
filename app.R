@@ -440,7 +440,7 @@ server <- function(input, output) {
       if (win_moves() > 0) {
         div(paste0(THE_NAME, " #", neildle_number, " ", win_moves(), "/6 🎉"))
       } else {
-        div(paste0(THE_NAME, " X/6 😔"))
+        div(paste0(THE_NAME, " #", neildle_number, " X/6 😔"))
       },
       lines,
       div(THE_URL)
